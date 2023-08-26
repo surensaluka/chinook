@@ -2,9 +2,8 @@
 @attribute [Authorize]
 @inject IArtistService artistService;
 
-@using Chinook.Models
+@using Chinook.ClientModels;
 @using Chinook.Services;
-@using Microsoft.EntityFrameworkCore
 
 <PageTitle>Index</PageTitle>
 
@@ -40,9 +39,7 @@ else
 }
 
 @code {
-    private List<Artist> Artists;
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
-
+    private List<ArtistModel> Artists;
 
     private string searchText;
     public string SearchText
@@ -66,17 +63,17 @@ else
         Artists = await artistService.SearchArtists(searchText);
     }
 
-    public async Task<List<Artist>> GetArtists()
-    {
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        //var users = dbContext.Users.Include(a => a.UserPlaylists).ToList();
+    // public async Task<List<Artist>> GetArtists()
+    // {
+    //     var dbContext = await DbFactory.CreateDbContextAsync();
+    //     //var users = dbContext.Users.Include(a => a.UserPlaylists).ToList();
 
-        return dbContext.Artists.Include(a => a.Albums).ToList();
-    }
+    //     return dbContext.Artists.Include(a => a.Albums).ToList();
+    // }
 
-    public async Task<List<Album>> GetAlbumsForArtist(int artistId)
-    {
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        return dbContext.Albums.Where(a => a.ArtistId == artistId).ToList();
-    }
+    // public async Task<List<Album>> GetAlbumsForArtist(int artistId)
+    // {
+    //     var dbContext = await DbFactory.CreateDbContextAsync();
+    //     return dbContext.Albums.Where(a => a.ArtistId == artistId).ToList();
+    // }
 }
