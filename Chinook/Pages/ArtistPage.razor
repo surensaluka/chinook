@@ -1,9 +1,12 @@
 ﻿@page "/artist/{ArtistId:long}"
 @attribute [Authorize]
+@inject ITrackService _trackService;
+@inject IArtistService _artistService;
+@inject IPlaylistService _playlistService;
 
-@using Chinook.Models
 @using Chinook.ClientModels
-@using Microsoft.EntityFrameworkCore
+@using Chinook.Services;
+@using Chinook.Utility;
 @using System.Security.Claims;
 
 @if (!string.IsNullOrWhiteSpace(InfoMessage))
@@ -25,15 +28,15 @@
 else
 {
     <h1>@Artist.Name</h1>
-        <table class="table table-striped table-hover table-sm">
-            <thead>
-                <tr>
-                    <th>Album title</th>
-                    <th>Track name</th>
-                    <th></th>
+    <table class="table table-striped table-hover table-sm">
+        <thead>
+            <tr>
+                <th>Album title</th>
+                <th>Track name</th>
+                <th></th>
             </tr>
-            </thead>
-            <tbody>
+        </thead>
+        <tbody>
             @foreach (var track in Tracks)
             {
                 <tr>
@@ -52,43 +55,38 @@ else
                     </td>
                 </tr>
             }
-            </tbody>
-        </table>
+        </tbody>
+    </table>
 
 }
 
 @code {
     [Parameter] public long ArtistId { get; set; }
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
     private Modal PlaylistDialog { get; set; }
 
     private string NewPlaylistName;
-    private Artist Artist;
-    private List<PlaylistTrack> Tracks;
-    private DbContext DbContext;
-    private PlaylistTrack SelectedTrack;
+    private ClientModels.Artist Artist;
+    private List<ClientModels.PlaylistTrack> Tracks;
+    private List<ClientModels.Playlist> Playlists;
+
+    private ClientModels.PlaylistTrack SelectedTrack;
+    private long SelectedPlaylistId;
     private string InfoMessage;
     private string CurrentUserId;
+    private string ErrorMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
         CurrentUserId = await GetUserId();
-        var DbContext = await DbFactory.CreateDbContextAsync();
+        Artist = await _artistService.GetArtistById(ArtistId);
+        await PopulateTracks();
+    }
 
-        Artist = DbContext.Artists.SingleOrDefault(a => a.ArtistId == ArtistId);
-
-        Tracks = DbContext.Tracks.Where(a => a.Album.ArtistId == ArtistId)
-            .Include(a => a.Album)
-            .Select(t => new PlaylistTrack()
-                {
-                    AlbumTitle = (t.Album == null ? "-" : t.Album.Title),
-                    TrackId = t.TrackId,
-                    TrackName = t.Name,
-                    IsFavorite = t.Playlists.Where(p => p.UserPlaylists.Any(up => up.UserId == CurrentUserId && up.Playlist.Name == "Favorites")).Any()
-                })
-            .ToList();
+    private async Task PopulateTracks()
+    {
+        Tracks = await _trackService.PopulateTracks(ArtistId, CurrentUserId);
     }
 
     private async Task<string> GetUserId()
@@ -98,36 +96,114 @@ else
         return userId;
     }
 
-    private void FavoriteTrack(long trackId)
+    private async void FavoriteTrack(long trackId)
     {
-        var track = Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
+        var track = await _trackService.ToggleFavoriteTrack(trackId, true);
+        await PopulateTracks();
+        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist {AppConstants.Favorites}.";
     }
 
-    private void UnfavoriteTrack(long trackId)
+    private async void UnfavoriteTrack(long trackId)
     {
-        var track = Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist Favorites.";
+        var track = await _trackService.ToggleFavoriteTrack(trackId, false);
+        await PopulateTracks();
+        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {AppConstants.Favorites}.";
     }
 
-    private void OpenPlaylistDialog(long trackId)
+    private async void OpenPlaylistDialog(long trackId)
     {
         CloseInfoMessage();
         SelectedTrack = Tracks.FirstOrDefault(t => t.TrackId == trackId);
+
+        Playlists = await _playlistService.GetAllPlaylists();
+        if (SelectedPlaylistId == 0 && Playlists.Count > 0)
+            SelectedPlaylistId = Playlists[0].PlaylistId;
+
         PlaylistDialog.Open();
     }
 
-    private void AddTrackToPlaylist()
+    private async void AddTrackToPlaylist()
     {
-        CloseInfoMessage();
-        InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {{playlist name}}.";
-        NewPlaylistName = string.Empty;
-        PlaylistDialog.Close();
+        long playlistId = await CreatePlaylist();
+
+        if (NewPlaylistNotCreated())
+        {
+            playlistId = SelectedPlaylistId;
+        }
+
+        /*var DbContext = await DbFactory.CreateDbContextAsync();
+        var playlist = await DbContext.Playlists.Include(x => x.Tracks).FirstAsync(x => x.PlaylistId == playlistId);
+        var track = await DbContext.Tracks.FindAsync(SelectedTrack.TrackId);
+
+        if (playlist != null && track != null && !playlist.Tracks.Any(f => f.TrackId == track.TrackId))
+        {
+            playlist.Tracks.Add(track);
+            DbContext.SaveChanges();
+        }*/
+
+        
+        if (playlistId >= 0)
+        {
+            string playlistName = await _playlistService.AddTrackToPlaylist(SelectedTrack.TrackId, playlistId);
+            await PopulateTracks();
+
+            string finalPlaylistName = (string.IsNullOrWhiteSpace(NewPlaylistName)) ? playlistName : NewPlaylistName;
+            InfoMessage = $"Track {Artist.Name} - {SelectedTrack.AlbumTitle} - {SelectedTrack.TrackName} added to playlist {finalPlaylistName}.";
+            PlaylistDialog.Close();
+        }
+
+        bool NewPlaylistNotCreated()
+        {
+            return playlistId == 0;
+        }
+    }
+
+    private async Task<long> CreatePlaylist()
+    {
+        if (string.IsNullOrWhiteSpace(NewPlaylistName)) return 0;
+
+        if (await _playlistService.IsPlaylistNameTaken(NewPlaylistName))
+        {
+            ErrorMessage = $"Playlist name {NewPlaylistName} already exists. Please add a unique name.";
+            return -1;
+        }
+
+        /*var DbContext = await DbFactory.CreateDbContextAsync();
+        long maxPlaylistId = DbContext.Playlists.Max(x => x.PlaylistId);
+        await DbContext.Playlists.AddAsync(new Models.Playlist
+            {
+                Name = NewPlaylistName.Trim(),
+                PlaylistId = ++maxPlaylistId
+            });
+
+        string userId = await GetUserId();
+        await DbContext.UserPlaylists.AddAsync(new Models.UserPlaylist
+            {
+                PlaylistId = maxPlaylistId,
+                UserId = userId
+            });
+
+        DbContext.SaveChanges();*/
+
+        return await _playlistService.CreatePlaylist(NewPlaylistName, await GetUserId());
+    }
+
+
+    private void PlaylistChanged(ChangeEventArgs args)
+    {
+        SelectedPlaylistId = Convert.ToInt32(args?.Value);
     }
 
     private void CloseInfoMessage()
     {
         InfoMessage = "";
+        Cleanup();
+    }
+
+    private void Cleanup()
+    {
+        NewPlaylistName = string.Empty;
+        ErrorMessage = string.Empty;
     }
 }
 
@@ -145,15 +221,18 @@ else
 
         <div class="form-group mb-2">
             <label for="ExistingPlaylist">Add to existing playlist</label>
-            <select class="form-control" id="ExistingPlaylist">
-                <option>Playlist 1</option>
-                <option>Playlist 2</option>
-                <option>Playlist 3</option>
+            <select class="form-control" id="ExistingPlaylist" @onchange="PlaylistChanged">
+                @if (Playlists != null)
+                    foreach (var playlist in Playlists)
+                    {
+                        <option value="@playlist.PlaylistId">@playlist.Name</option>
+                    }
             </select>
         </div>
         <div class="form-group mb-2">
             <label for="NewPlaylist">Create new playlist</label>
             <input type="text" id="NewPlaylist" class="form-control" placeholder="Name for the new playlist" @bind="NewPlaylistName">
+            <label style="color: red; font-size:14px;">@ErrorMessage</label>
         </div>
     </Body>
     <Footer>

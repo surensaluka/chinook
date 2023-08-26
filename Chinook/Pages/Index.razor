@@ -1,6 +1,6 @@
 ﻿@page "/"
 @attribute [Authorize]
-@inject IArtistService artistService;
+@inject IArtistService _artistService;
 
 @using Chinook.ClientModels;
 @using Chinook.Services;
@@ -39,9 +39,9 @@ else
 }
 
 @code {
-    private List<ArtistModel> Artists;
+    private List<Artist> Artists = new();
 
-    private string searchText;
+    private string searchText = string.Empty;
     public string SearchText
     {
         get { return searchText; }
@@ -55,25 +55,11 @@ else
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
-        Artists = await artistService.GetArtists(); //GetArtists();
+        Artists = await _artistService.GetArtists();
     }
 
-    public async void SearchArtists(string searchText)
+    private async void SearchArtists(string searchText)
     {
-        Artists = await artistService.SearchArtists(searchText);
+        Artists = await _artistService.SearchArtists(searchText);
     }
-
-    // public async Task<List<Artist>> GetArtists()
-    // {
-    //     var dbContext = await DbFactory.CreateDbContextAsync();
-    //     //var users = dbContext.Users.Include(a => a.UserPlaylists).ToList();
-
-    //     return dbContext.Artists.Include(a => a.Albums).ToList();
-    // }
-
-    // public async Task<List<Album>> GetAlbumsForArtist(int artistId)
-    // {
-    //     var dbContext = await DbFactory.CreateDbContextAsync();
-    //     return dbContext.Albums.Where(a => a.ArtistId == artistId).ToList();
-    // }
 }

@@ -15,17 +15,23 @@ namespace Chinook.Services
             _mapper = mapper;
         }
 
-        public async Task<List<ArtistModel>> GetArtists()
+        public async Task<Artist> GetArtistById(long artistId)
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
-            return _mapper.Map<List<ArtistModel>>(await dbContext.Artists.Include(a => a.Albums).ToListAsync());
+            return _mapper.Map<Artist>(dbContext.Artists.SingleOrDefault(a => a.ArtistId == artistId));
         }
 
-        public async Task<List<ArtistModel>> SearchArtists(string searchText)
+        public async Task<List<Artist>> GetArtists()
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
-            return _mapper.Map<List<ArtistModel>>(await dbContext.Artists.Include(a => a.Albums)
-            .Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToListAsync());
+            return _mapper.Map<List<Artist>>(await dbContext.Artists.Include(a => a.Albums).ToListAsync());
+        }
+
+        public async Task<List<Artist>> SearchArtists(string searchText)
+        {
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+            return _mapper.Map<List<Artist>>(await dbContext.Artists.Include(a => a.Albums)
+            .Where(x => x.Name != null && x.Name.ToLower().Contains(searchText.ToLower())).ToListAsync());
         }
     }
 }

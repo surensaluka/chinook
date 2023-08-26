@@ -23,7 +23,8 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 # region Service Registrations
 builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ChinookUser>>();
 builder.Services.AddScoped<IArtistService, ArtistService>();
-
+builder.Services.AddScoped<ITrackService, TrackService>();
+builder.Services.AddScoped<IPlaylistService, PlaylistService>();
 # endregion
 
 var app = builder.Build();
