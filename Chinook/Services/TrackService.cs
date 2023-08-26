@@ -24,7 +24,7 @@ namespace Chinook.Services
             //DbContext.Tracks.Where(a => a.Album.ArtistId == artistId)
             //.Include(a => a.Album).ToList(), opts => opts.Items["currentUserId"] = currentUserId);
 
-            return DbContext.Tracks.Where(a => a.Album.ArtistId == artistId)
+            return await DbContext.Tracks.Where(a => a.Album.ArtistId == artistId)
                 .Include(a => a.Album)
                 .Select(t => new PlaylistTrack()
                 {
@@ -35,17 +35,19 @@ namespace Chinook.Services
                     .Where(p => p.UserPlaylists
                     .Any(up => up.UserId == currentUserId && up.Playlist.Name == AppConstants.Favorites))
                     .Any()
-                }).ToList();
+                }).ToListAsync();
         }
 
         public async Task<PlaylistTrack> ToggleFavoriteTrack(long trackId, bool markAsFavorite)
         {
             var DbContext = await _dbFactory.CreateDbContextAsync();
-            var track = DbContext.Tracks.Include(a => a.Album).ThenInclude(a => a.Artist)
-                .First(x => x.TrackId == trackId);
-            var favoritePlaylist = DbContext.Playlists
+
+            var track = await DbContext.Tracks.Include(a => a.Album).ThenInclude(a => a.Artist)
+                .FirstAsync(x => x.TrackId == trackId);
+
+            var favoritePlaylist = await DbContext.Playlists
                 .Include(a => a.Tracks)
-                .First(x => x.Name == AppConstants.Favorites);
+                .FirstAsync(x => x.Name == AppConstants.Favorites);
 
             if (markAsFavorite)
                 favoritePlaylist.Tracks.Add(track);

@@ -59,7 +59,7 @@ namespace Chinook.Services
             if (playlist != null && track != null && !playlist.Tracks.Any(f => f.TrackId == track.TrackId))
             {
                 playlist.Tracks.Add(track);
-                dbContext.SaveChanges();
+                await dbContext.SaveChangesAsync();
                 return playlist.Name;
             }
 
