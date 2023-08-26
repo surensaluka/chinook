@@ -1,6 +1,8 @@
 using Chinook;
 using Chinook.Areas.Identity;
+using Chinook.Mappings;
 using Chinook.Models;
+using Chinook.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +18,13 @@ builder.Services.AddDefaultIdentity<ChinookUser>(options => options.SignIn.Requi
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
+builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+# region Service Registrations
 builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ChinookUser>>();
+builder.Services.AddScoped<IArtistService, ArtistService>();
+
+# endregion
 
 var app = builder.Build();
 

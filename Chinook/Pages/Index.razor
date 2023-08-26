@@ -1,7 +1,9 @@
 ﻿@page "/"
 @attribute [Authorize]
+@inject IArtistService artistService;
 
 @using Chinook.Models
+@using Chinook.Services;
 @using Microsoft.EntityFrameworkCore
 
 <PageTitle>Index</PageTitle>
@@ -41,6 +43,7 @@ else
     private List<Artist> Artists;
     [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
 
+
     private string searchText;
     public string SearchText
     {
@@ -55,14 +58,12 @@ else
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
-        Artists = await GetArtists();
+        Artists = await artistService.GetArtists(); //GetArtists();
     }
 
     public async void SearchArtists(string searchText)
     {
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        Artists = await dbContext.Artists.Include(a => a.Albums)
-        .Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToListAsync();
+        Artists = await artistService.SearchArtists(searchText);
     }
 
     public async Task<List<Artist>> GetArtists()
