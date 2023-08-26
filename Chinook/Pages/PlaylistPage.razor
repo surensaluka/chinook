@@ -43,15 +43,13 @@ else
                             {
                                 @if (track.IsFavorite)
                                 {
-                                    <a href="#" class="m-1" title="Unark as favorite" @onclick="@(() => UnfavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star-fill"></i></a>
+                                    <a href="#" class="m-1" title="Unmark as favorite" @onclick="@(() => UnfavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star-fill"></i></a>
                                 }
                                 else
                                 {
                                     <a href="#" class="m-1" title="Mark as favorite" @onclick="@(() => FavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star"></i></a>
                                 }
-
                             }
-                            <a href="#" class="m-1" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -113,15 +111,8 @@ else
         InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist Favorites.";
     }
 
-    private void RemoveTrack(long trackId)
-    {
-        CloseInfoMessage();
-
-    }
-
     private void CloseInfoMessage()
     {
         InfoMessage = "";
     }
-
 }

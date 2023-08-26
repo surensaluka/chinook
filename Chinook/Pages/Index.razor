@@ -8,6 +8,10 @@
 
 <h1>Artists</h1>
 
+<div style="margin-bottom: 10px">
+    <input type="text" placeholder="Search" @bind="SearchText" />
+</div>
+
 @if (Artists == null)
 {
     <Loading />
@@ -37,17 +41,36 @@ else
     private List<Artist> Artists;
     [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
 
-    protected override async Task OnInitializedAsync() {
+    private string searchText;
+    public string SearchText
+    {
+        get { return searchText; }
+        set
+        {
+            searchText = value.Trim();
+            SearchArtists(searchText);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
         await InvokeAsync(StateHasChanged);
         Artists = await GetArtists();
     }
 
-    public async Task<List<Artist>> GetArtists()
-    {   
+    public async void SearchArtists(string searchText)
+    {
         var dbContext = await DbFactory.CreateDbContextAsync();
-        var users = dbContext.Users.Include(a => a.UserPlaylists).ToList();
-        
-        return dbContext.Artists.ToList();
+        Artists = await dbContext.Artists.Include(a => a.Albums)
+        .Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToListAsync();
+    }
+
+    public async Task<List<Artist>> GetArtists()
+    {
+        var dbContext = await DbFactory.CreateDbContextAsync();
+        //var users = dbContext.Users.Include(a => a.UserPlaylists).ToList();
+
+        return dbContext.Artists.Include(a => a.Albums).ToList();
     }
 
     public async Task<List<Album>> GetAlbumsForArtist(int artistId)
