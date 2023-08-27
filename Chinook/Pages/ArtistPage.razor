@@ -144,7 +144,7 @@ else
         
         if (playlistId >= 0)
         {
-            string playlistName = await _playlistService.AddTrackToPlaylist(SelectedTrack.TrackId, playlistId);
+            string playlistName = await _trackService.AddTrackToPlaylist(SelectedTrack.TrackId, playlistId);
             await PopulateTracks();
 
             string finalPlaylistName = (string.IsNullOrWhiteSpace(NewPlaylistName)) ? playlistName : NewPlaylistName;

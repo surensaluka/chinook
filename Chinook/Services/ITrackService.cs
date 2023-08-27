@@ -6,6 +6,7 @@ namespace Chinook.Services
     {
         Task<List<PlaylistTrack>> PopulateTracks(long artistId, string currentUserId);
         Task<PlaylistTrack> ToggleFavoriteTrack(long trackId, bool markAsFavorite);
-        //Task<PlaylistTrack> UnfavoriteTrack(long trackId);
+        Task<string> AddTrackToPlaylist(long trackId, long playlistId);
+        Task<PlaylistTrack> RemoveTrackFromPlaylist(long trackId, long playlistId);
     }
 }

@@ -58,5 +58,39 @@ namespace Chinook.Services
 
             return _mapper.Map<PlaylistTrack>(track);
         }
+
+        public async Task<string> AddTrackToPlaylist(long trackId, long playlistId)
+        {
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+
+            var playlist = await dbContext.Playlists.Include(x => x.Tracks).FirstAsync(x => x.PlaylistId == playlistId);
+            var track = await dbContext.Tracks.FindAsync(trackId);
+
+            if (playlist != null && track != null && !playlist.Tracks.Any(f => f.TrackId == track.TrackId))
+            {
+                playlist.Tracks.Add(track);
+                await dbContext.SaveChangesAsync();
+                return playlist.Name;
+            }
+
+            return (playlist == null) ? string.Empty : playlist.Name;
+        }
+
+        public async Task<PlaylistTrack> RemoveTrackFromPlaylist(long trackId, long playlistId)
+        {
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+
+            var playlist = await dbContext.Playlists.Include(x => x.Tracks).FirstAsync(x => x.PlaylistId == playlistId);
+            var track = await dbContext.Tracks.FindAsync(trackId);
+
+            if (track != null)
+            {
+                playlist.Tracks.Remove(track);
+                await dbContext.SaveChangesAsync();
+            }
+
+            return _mapper.Map<PlaylistTrack>(await dbContext.Tracks.Include(a => a.Album).ThenInclude(a => a.Artist)
+                .FirstAsync(x => x.TrackId == trackId));
+        }
     }
 }
