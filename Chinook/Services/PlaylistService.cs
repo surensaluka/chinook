@@ -25,23 +25,12 @@ namespace Chinook.Services
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
-            return await dbContext.Playlists
-            .Include(a => a.Tracks).ThenInclude(a => a.Album).ThenInclude(a => a.Artist)
-            .Where(p => p.PlaylistId == id)
-            .Select(p => new ClientModels.Playlist()
-            {
-                Name = p.Name,
-                Tracks = p.Tracks.Select(t => new ClientModels.PlaylistTrack()
-                {
-                    AlbumTitle = t.Album.Title,
-                    ArtistName = t.Album.Artist.Name,
-                    TrackId = t.TrackId,
-                    TrackName = t.Name,
-                    IsFavorite = t.Playlists.Where(p => p.UserPlaylists.Any(up => up.UserId == currentUserId && up.Playlist.Name == AppConstants.Favorites)).Any()
-                }).ToList()
-            }).FirstOrDefaultAsync();
-
-            //_mapper.Map<List<ClientModels.Playlist>>(
+            return _mapper.Map<Models.Playlist, ClientModels.Playlist>(await dbContext.Playlists
+                .Include(a => a.UserPlaylists)
+                .Include(a => a.Tracks)
+                .ThenInclude(a => a.Album)
+                .ThenInclude(a => a.Artist).Where(p => p.PlaylistId == id)
+            .FirstOrDefaultAsync(), opt => opt.Items[AppConstants.CurrentUserId] = currentUserId);
         }
 
         public async Task<ClientModels.Playlist> GetPlaylistByName(string name)

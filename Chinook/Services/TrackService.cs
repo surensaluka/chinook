@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Chinook.ClientModels;
+using Chinook.Models;
 using Chinook.Utility;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,31 +19,21 @@ namespace Chinook.Services
 
         public async Task<List<PlaylistTrack>> GetTracksByArtistId(long id, string currentUserId)
         {
-            var DbContext = await _dbFactory.CreateDbContextAsync();
+            var dbContext = await _dbFactory.CreateDbContextAsync();
 
-            //return _mapper.Map<List<PlaylistTrack>>(
-            //DbContext.Tracks.Where(a => a.Album.ArtistId == trackId)
-            //.Include(a => a.Album).ToList(), opts => opts.Items["currentUserId"] = currentUserId);
-
-            return await DbContext.Tracks.Where(a => a.Album.ArtistId == id)
-                .Include(a => a.Album)
-                .Select(t => new PlaylistTrack()
-                {
-                    AlbumTitle = (t.Album == null ? "-" : t.Album.Title),
-                    TrackId = t.TrackId,
-                    TrackName = t.Name,
-                    IsFavorite = t.Playlists
-                    .Where(p => p.UserPlaylists
-                    .Any(up => up.UserId == currentUserId && up.Playlist.Name == AppConstants.Favorites))
-                    .Any()
-                }).ToListAsync();
+            return _mapper.Map<List<Track>, List<PlaylistTrack>>(
+            dbContext.Tracks.Include(x => x.Playlists)
+            .ThenInclude(a => a.UserPlaylists)
+            .Include(a => a.Album).Where(a => a.Album.ArtistId == id).ToList(),
+            opts => opts.Items[AppConstants.CurrentUserId] = currentUserId);
         }
 
         public async Task<PlaylistTrack> ToggleFavoriteTrack(long trackId, bool markAsFavorite)
         {
             var DbContext = await _dbFactory.CreateDbContextAsync();
 
-            var track = await DbContext.Tracks.Include(a => a.Album).ThenInclude(a => a.Artist)
+            var track = await DbContext.Tracks.Include(a => a.Album)
+                .ThenInclude(a => a.Artist)
                 .FirstAsync(x => x.TrackId == trackId);
 
             var favoritePlaylist = await DbContext.Playlists
@@ -56,7 +47,7 @@ namespace Chinook.Services
 
             DbContext.SaveChanges();
 
-            return _mapper.Map<PlaylistTrack>(track);
+            return _mapper.Map<Track, PlaylistTrack>(track, opt => opt.Items[AppConstants.CurrentUserId] = string.Empty);
         }
 
         public async Task<string> AddTrackToPlaylist(long trackId, long playlistId)
