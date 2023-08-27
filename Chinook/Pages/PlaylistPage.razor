@@ -73,6 +73,13 @@ else
         await LoadPlayListWithTracks();
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        // This event will fire when the parameters change
+        // Put your code here.
+        Playlist = await _playlistService.GetPlaylistById(PlaylistId, await GetUserId());
+    }
+
     private async Task LoadPlayListWithTracks()
     {
         Playlist = await _playlistService.GetPlaylistById(PlaylistId, await GetUserId());

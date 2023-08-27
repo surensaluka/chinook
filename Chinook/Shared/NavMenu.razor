@@ -13,7 +13,7 @@
     </div>
 </div>
 
-<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
@@ -21,27 +21,41 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="@($"playlist/{PlaylistId}")">
+            <NavLink class="nav-link" href="@($"playlist/{FavoritePlaylistId}")">
                 <i class="bi bi-music-note-list me-3" style="font-size: 1.25em"></i>My Favorite Tracks
             </NavLink>
         </div>
+        @foreach (var playlist in AllPlaylists)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="@($"playlist/{playlist.PlaylistId}")">
+                    <i class="bi bi-music-note-list me-3" style="font-size: 1.25em"></i>@playlist.Name
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-    private string PlaylistId = string.Empty;
+
+    private string FavoritePlaylistId = string.Empty;
+    private List<ClientModels.Playlist> AllPlaylists;
 
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
-        var playlist = await _playlistService.GetPlaylistByName(AppConstants.Favorites);
-        PlaylistId = playlist.PlaylistId.ToString();
+        AllPlaylists = await _playlistService.GetAllPlaylists();
+        var favoritesPlaylist = AllPlaylists.Find(x => x.Name == AppConstants.Favorites);
+        if (favoritesPlaylist != null) AllPlaylists.Remove(favoritesPlaylist);
+
+        FavoritePlaylistId = favoritesPlaylist.PlaylistId.ToString();
     }
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+        StateHasChanged();
     }
 }
