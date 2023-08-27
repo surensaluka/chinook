@@ -26,10 +26,9 @@ namespace Chinook.Services
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
             return _mapper.Map<Models.Playlist, ClientModels.Playlist>(await dbContext.Playlists
-                .Include(a => a.UserPlaylists)
-                .Include(a => a.Tracks)
-                .ThenInclude(a => a.Album)
-                .ThenInclude(a => a.Artist).Where(p => p.PlaylistId == id)
+                .Include(p => p.Tracks).ThenInclude(t => t.Album).ThenInclude(a => a.Artist)
+                .Include(p => p.Tracks).ThenInclude(t => t.Playlists).ThenInclude(p => p.UserPlaylists)
+                .Where(p => p.PlaylistId == id)
             .FirstOrDefaultAsync(), opt => opt.Items[AppConstants.CurrentUserId] = currentUserId);
         }
 
@@ -38,7 +37,7 @@ namespace Chinook.Services
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
             var playlist = await dbContext.Playlists
-            .Where(p => p.Name == name).FirstOrDefaultAsync();
+            .Where(a => a.Name == name).FirstOrDefaultAsync();
 
             return _mapper.Map<ClientModels.Playlist>(playlist);
         }
@@ -47,7 +46,7 @@ namespace Chinook.Services
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
-            return await dbContext.Playlists.AnyAsync(x => x.Name != null && x.Name.ToLower()
+            return await dbContext.Playlists.AnyAsync(p => p.Name != null && p.Name.ToLower()
             .Equals(name.Trim().ToLower()));
         }
 
@@ -55,7 +54,7 @@ namespace Chinook.Services
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
-            long maxPlaylistId = await dbContext.Playlists.MaxAsync(x => x.PlaylistId);
+            long maxPlaylistId = await dbContext.Playlists.MaxAsync(p => p.PlaylistId);
             await dbContext.Playlists.AddAsync(new Models.Playlist
             {
                 Name = name.Trim(),

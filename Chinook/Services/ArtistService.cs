@@ -31,7 +31,7 @@ namespace Chinook.Services
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
             return _mapper.Map<List<Artist>>(await dbContext.Artists.Include(a => a.Albums)
-            .Where(x => x.Name != null && x.Name.ToLower().Contains(searchText.ToLower())).ToListAsync());
+            .Where(a => a.Name != null && a.Name.ToLower().Contains(searchText.ToLower())).ToListAsync());
         }
     }
 }
