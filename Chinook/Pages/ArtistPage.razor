@@ -86,7 +86,7 @@ else
 
     private async Task PopulateTracks()
     {
-        Tracks = await _trackService.PopulateTracks(ArtistId, CurrentUserId);
+        Tracks = await _trackService.GetTracksByArtistId(ArtistId, CurrentUserId);
     }
 
     private async Task<string> GetUserId()
@@ -115,7 +115,7 @@ else
         CloseInfoMessage();
         SelectedTrack = Tracks.FirstOrDefault(t => t.TrackId == trackId);
 
-        Playlists = await _playlistService.GetAllPlaylists();
+        Playlists = await _playlistService.GetPlaylists();
         if (SelectedPlaylistId == 0 && Playlists.Count > 0)
             SelectedPlaylistId = Playlists[0].PlaylistId;
 

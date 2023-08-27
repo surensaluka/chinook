@@ -4,10 +4,10 @@ namespace Chinook.Services
 {
     public interface IPlaylistService
     {
-        Task<List<Playlist>> GetAllPlaylists();
-        Task<Playlist> GetPlaylistById(long PlaylistId, string currentUserId);
-        Task<Playlist> GetPlaylistByName(string PlaylistName);
-        Task<bool> IsPlaylistNameTaken(string playlistName);
-        Task<long> CreatePlaylist(string playlistName, string userId);
+        Task<List<Playlist>> GetPlaylists();
+        Task<Playlist> GetPlaylistById(long id, string currentUserId);
+        Task<Playlist> GetPlaylistByName(string name);
+        Task<bool> IsPlaylistNameTaken(string name);
+        Task<long> CreatePlaylist(string name, string currentUserId);
     }
 }

@@ -46,7 +46,7 @@
     protected override async Task OnInitializedAsync()
     {
         await InvokeAsync(StateHasChanged);
-        AllPlaylists = await _playlistService.GetAllPlaylists();
+        AllPlaylists = await _playlistService.GetPlaylists();
         var favoritesPlaylist = AllPlaylists.Find(x => x.Name == AppConstants.Favorites);
         if (favoritesPlaylist != null) AllPlaylists.Remove(favoritesPlaylist);
 

@@ -15,10 +15,10 @@ namespace Chinook.Services
             _mapper = mapper;
         }
 
-        public async Task<Artist> GetArtistById(long artistId)
+        public async Task<Artist> GetArtistById(long id)
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
-            return _mapper.Map<Artist>(dbContext.Artists.SingleOrDefault(a => a.ArtistId == artistId));
+            return _mapper.Map<Artist>(dbContext.Artists.SingleOrDefault(a => a.ArtistId == id));
         }
 
         public async Task<List<Artist>> GetArtists()

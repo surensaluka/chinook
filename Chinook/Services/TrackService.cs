@@ -16,15 +16,15 @@ namespace Chinook.Services
             _mapper = mapper;
         }
 
-        public async Task<List<PlaylistTrack>> PopulateTracks(long artistId, string currentUserId)
+        public async Task<List<PlaylistTrack>> GetTracksByArtistId(long id, string currentUserId)
         {
             var DbContext = await _dbFactory.CreateDbContextAsync();
 
             //return _mapper.Map<List<PlaylistTrack>>(
-            //DbContext.Tracks.Where(a => a.Album.ArtistId == artistId)
+            //DbContext.Tracks.Where(a => a.Album.ArtistId == trackId)
             //.Include(a => a.Album).ToList(), opts => opts.Items["currentUserId"] = currentUserId);
 
-            return await DbContext.Tracks.Where(a => a.Album.ArtistId == artistId)
+            return await DbContext.Tracks.Where(a => a.Album.ArtistId == id)
                 .Include(a => a.Album)
                 .Select(t => new PlaylistTrack()
                 {

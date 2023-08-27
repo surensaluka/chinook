@@ -15,19 +15,19 @@ namespace Chinook.Services
             _mapper = mapper;
         }
 
-        public async Task<List<ClientModels.Playlist>> GetAllPlaylists()
+        public async Task<List<ClientModels.Playlist>> GetPlaylists()
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
             return _mapper.Map<List<ClientModels.Playlist>>(await dbContext.Playlists.ToListAsync());
         }
 
-        public async Task<ClientModels.Playlist> GetPlaylistById(long PlaylistId, string currentUserId)
+        public async Task<ClientModels.Playlist> GetPlaylistById(long id, string currentUserId)
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
             return await dbContext.Playlists
             .Include(a => a.Tracks).ThenInclude(a => a.Album).ThenInclude(a => a.Artist)
-            .Where(p => p.PlaylistId == PlaylistId)
+            .Where(p => p.PlaylistId == id)
             .Select(p => new ClientModels.Playlist()
             {
                 Name = p.Name,
@@ -44,39 +44,39 @@ namespace Chinook.Services
             //_mapper.Map<List<ClientModels.Playlist>>(
         }
 
-        public async Task<ClientModels.Playlist> GetPlaylistByName(string PlaylistName)
+        public async Task<ClientModels.Playlist> GetPlaylistByName(string name)
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
             var playlist = await dbContext.Playlists
-            .Where(p => p.Name == PlaylistName).FirstOrDefaultAsync();
+            .Where(p => p.Name == name).FirstOrDefaultAsync();
 
             return _mapper.Map<ClientModels.Playlist>(playlist);
         }
 
-        public async Task<bool> IsPlaylistNameTaken(string playlistName)
+        public async Task<bool> IsPlaylistNameTaken(string name)
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
             return await dbContext.Playlists.AnyAsync(x => x.Name != null && x.Name.ToLower()
-            .Equals(playlistName.Trim().ToLower()));
+            .Equals(name.Trim().ToLower()));
         }
 
-        public async Task<long> CreatePlaylist(string playlistName, string userId)
+        public async Task<long> CreatePlaylist(string name, string currentUserId)
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
             long maxPlaylistId = await dbContext.Playlists.MaxAsync(x => x.PlaylistId);
             await dbContext.Playlists.AddAsync(new Models.Playlist
             {
-                Name = playlistName.Trim(),
+                Name = name.Trim(),
                 PlaylistId = ++maxPlaylistId
             });
 
             await dbContext.UserPlaylists.AddAsync(new Models.UserPlaylist
             {
                 PlaylistId = maxPlaylistId,
-                UserId = userId
+                UserId = currentUserId
             });
 
             await dbContext.SaveChangesAsync();
