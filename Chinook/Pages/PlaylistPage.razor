@@ -93,15 +93,17 @@ else
 
     private async void FavoriteTrack(long trackId)
     {
-        var track = await _trackService.ToggleFavoriteTrack(trackId, true);
+        var track = await _trackService.ToggleFavoriteTrack(trackId, true, await GetUserId());
         await LoadPlayListWithTracks();
+        StateHasChanged();
         InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist {AppConstants.Favorites}.";
     }
 
     private async void UnfavoriteTrack(long trackId)
     {
-        var track = await _trackService.ToggleFavoriteTrack(trackId, false);
+        var track = await _trackService.ToggleFavoriteTrack(trackId, false, await GetUserId());
         await LoadPlayListWithTracks();
+        StateHasChanged();
         InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {AppConstants.Favorites}.";
     }
 

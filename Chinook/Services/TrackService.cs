@@ -10,21 +10,18 @@ namespace Chinook.Services
     {
         private readonly IDbContextFactory<ChinookContext> _dbFactory;
         private readonly IMapper _mapper;
+        private readonly IPlaylistService _playlistService;
 
-        public TrackService(IDbContextFactory<ChinookContext> dbFactory, IMapper mapper)
+        public TrackService(IDbContextFactory<ChinookContext> dbFactory, IMapper mapper, IPlaylistService playlistService)
         {
             _dbFactory = dbFactory;
             _mapper = mapper;
+            _playlistService = playlistService;
         }
 
         public async Task<List<PlaylistTrack>> GetTracksByArtistId(long id, string currentUserId)
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
-
-            var fdfdff = dbContext.Tracks
-                .Include(t => t.Playlists).ThenInclude(p => p.UserPlaylists)
-                .Include(t => t.Album)
-                .Where(t => t.Album.ArtistId == id).ToList();
 
             return _mapper.Map<List<Track>, List<PlaylistTrack>>(
             dbContext.Tracks.Include(t => t.Playlists)
@@ -33,26 +30,41 @@ namespace Chinook.Services
             opts => opts.Items[AppConstants.CurrentUserId] = currentUserId);
         }
 
-        public async Task<PlaylistTrack> ToggleFavoriteTrack(long trackId, bool markAsFavorite)
+        public async Task<PlaylistTrack> ToggleFavoriteTrack(long trackId, bool markAsFavorite, string currentUserId)
         {
-            var DbContext = await _dbFactory.CreateDbContextAsync();
+            await CreatePlaylistIfNotExists(currentUserId);
 
-            var track = await DbContext.Tracks.Include(t => t.Album)
-                .ThenInclude(a => a.Artist)
-                .FirstAsync(t => t.TrackId == trackId);
+            var dbContext = await _dbFactory.CreateDbContextAsync();
 
-            var favoritePlaylist = await DbContext.Playlists
+            var favoritePlaylist = await dbContext.Playlists
                 .Include(p => p.Tracks)
                 .FirstAsync(p => p.Name == AppConstants.Favorites);
+
+            var track = await dbContext.Tracks.Include(t => t.Album)
+                .ThenInclude(a => a.Artist)
+                .FirstAsync(t => t.TrackId == trackId);
 
             if (markAsFavorite)
                 favoritePlaylist.Tracks.Add(track);
             else
                 favoritePlaylist.Tracks.Remove(track);
 
-            DbContext.SaveChanges();
+            await dbContext.SaveChangesAsync();
 
             return _mapper.Map<Track, PlaylistTrack>(track, opt => opt.Items[AppConstants.CurrentUserId] = string.Empty);
+        }
+
+        private async Task CreatePlaylistIfNotExists(string currentUserId)
+        {
+            var dbContext = await _dbFactory.CreateDbContextAsync();
+
+            var favoritePlaylist = await dbContext.Playlists
+               .FirstOrDefaultAsync(p => p.Name == AppConstants.Favorites);
+
+            if (favoritePlaylist == null)
+            {
+                await _playlistService.CreatePlaylist(AppConstants.Favorites, currentUserId);
+            }
         }
 
         public async Task<string> AddTrackToPlaylist(long trackId, long playlistId)
