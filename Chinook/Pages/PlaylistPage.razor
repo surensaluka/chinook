@@ -75,8 +75,6 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        // This event will fire when the parameters change
-        // Put your code here.
         Playlist = await _playlistService.GetPlaylistById(PlaylistId, await GetUserId());
     }
 
@@ -110,7 +108,7 @@ else
     {
         var track = await _trackService.RemoveTrackFromPlaylist(trackId, PlaylistId);
         await LoadPlayListWithTracks();
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {AppConstants.Favorites}.";
+        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {Playlist.Name}.";
     }
 
     private void CloseInfoMessage()

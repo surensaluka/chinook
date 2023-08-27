@@ -130,17 +130,6 @@ else
         {
             playlistId = SelectedPlaylistId;
         }
-
-        /*var DbContext = await DbFactory.CreateDbContextAsync();
-        var playlist = await DbContext.Playlists.Include(x => x.Tracks).FirstAsync(x => x.PlaylistId == playlistId);
-        var track = await DbContext.Tracks.FindAsync(SelectedTrack.TrackId);
-
-        if (playlist != null && track != null && !playlist.Tracks.Any(f => f.TrackId == track.TrackId))
-        {
-            playlist.Tracks.Add(track);
-            DbContext.SaveChanges();
-        }*/
-
         
         if (playlistId >= 0)
         {
@@ -167,24 +156,7 @@ else
             ErrorMessage = $"Playlist name {NewPlaylistName} already exists. Please add a unique name.";
             return -1;
         }
-
-        /*var DbContext = await DbFactory.CreateDbContextAsync();
-        long maxPlaylistId = DbContext.Playlists.Max(x => x.PlaylistId);
-        await DbContext.Playlists.AddAsync(new Models.Playlist
-            {
-                Name = NewPlaylistName.Trim(),
-                PlaylistId = ++maxPlaylistId
-            });
-
-        string userId = await GetUserId();
-        await DbContext.UserPlaylists.AddAsync(new Models.UserPlaylist
-            {
-                PlaylistId = maxPlaylistId,
-                UserId = userId
-            });
-
-        DbContext.SaveChanges();*/
-
+              
         return await _playlistService.CreatePlaylist(NewPlaylistName, await GetUserId());
     }
 
