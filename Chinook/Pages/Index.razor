@@ -1,12 +1,29 @@
 ﻿@page "/"
 @attribute [Authorize]
+@inject IArtistService _artistService;
 
-@using Chinook.Models
-@using Microsoft.EntityFrameworkCore
+@using Chinook.ClientModels;
+@using Chinook.Services;
 
 <PageTitle>Index</PageTitle>
 
 <h1>Artists</h1>
+
+<div style="margin-bottom: 10px">
+    <input type="text" placeholder="Search" @bind="SearchText" />
+</div>
+
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="@AlertCssClass fade show">
+        <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+                @ErrorMessage
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseAlertMessage"></button>
+        </div>
+    </div>
+}
 
 @if (Artists == null)
 {
@@ -34,25 +51,59 @@ else
 }
 
 @code {
-    private List<Artist> Artists;
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
+    private List<Artist> Artists = new();
+    private string ErrorMessage;
+    private string AlertCssClass;
 
-    protected override async Task OnInitializedAsync() {
-        await InvokeAsync(StateHasChanged);
-        Artists = await GetArtists();
-    }
-
-    public async Task<List<Artist>> GetArtists()
-    {   
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        var users = dbContext.Users.Include(a => a.UserPlaylists).ToList();
-        
-        return dbContext.Artists.ToList();
-    }
-
-    public async Task<List<Album>> GetAlbumsForArtist(int artistId)
+    private string searchText = string.Empty;
+    public string SearchText
     {
-        var dbContext = await DbFactory.CreateDbContextAsync();
-        return dbContext.Albums.Where(a => a.ArtistId == artistId).ToList();
+        get { return searchText; }
+        set
+        {
+            searchText = value.Trim();
+            SearchArtists(searchText);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            Artists = await _artistService.GetArtists();
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
+    }
+
+    private async void SearchArtists(string searchText)
+    {
+        try
+        {
+            Artists = await _artistService.SearchArtists(searchText);
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
+    }
+
+    private void DisplayErrorMessage(Exception e)
+    {
+        CloseAlertMessage();
+
+        if (e != null && !string.IsNullOrEmpty(e.Message))
+        {
+            AlertCssClass = "alert alert-danger";
+            ErrorMessage = e.Message;
+        }
+    }
+
+    private void CloseAlertMessage()
+    {
+        ErrorMessage = "";
     }
 }

@@ -13,7 +13,27 @@
         </div>
 
         <article class="content px-4">
-            @Body
+            <ErrorBoundary @ref="ErrorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="Exception">
+                    <div class="alert alert-primary">
+                        <h4>Something went wrong.</h4>
+                        <h6>@Exception.Message</h6>
+                        <button class="btn btn-info" @onclick="()=>ErrorBoundary.Recover()">Close</button>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
         </article>
     </main>
 </div>
+
+@code {
+    private ErrorBoundary ErrorBoundary;
+
+    protected override void OnInitialized()
+    {
+        this.ErrorBoundary = new ErrorBoundary();
+    }
+}

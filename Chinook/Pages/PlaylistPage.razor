@@ -1,27 +1,33 @@
 ﻿@page "/playlist/{PlaylistId:long}"
 @attribute [Authorize]
+@inject IPlaylistService _playlistService;
+@inject ITrackService _trackService;
 
-@using Chinook.Models
-@using Microsoft.EntityFrameworkCore
+@using Chinook.Services;
+@using Chinook.Utility;
 @using System.Security.Claims;
 
-<h1>Playlist <strong>@Playlist.Name</strong></h1>
-
-@if (!string.IsNullOrWhiteSpace(InfoMessage))
+@if (Playlist != null)
 {
-    <div class="alert alert-info fade show">
+    <h1>Playlist <strong>@Playlist.Name</strong></h1>
+}
+
+@if (!string.IsNullOrWhiteSpace(InfoMessage) || !string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="@AlertCssClass fade show">
         <div class="d-flex align-items-start">
             <div class="flex-grow-1">
                 @InfoMessage
+                @ErrorMessage
             </div>
-            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseInfoMessage"></button>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseAlertMessage"></button>
         </div>
     </div>
 }
 
 @if (Playlist == null)
 {
-     <Loading />
+    <Loading />
 }
 else
 {
@@ -30,7 +36,7 @@ else
             <tr>
                 <th>Track</th>
                 <th></th>
-        </tr>
+            </tr>
         </thead>
         <tbody>
             @foreach (var track in Playlist.Tracks)
@@ -39,19 +45,19 @@ else
                     <td>@track.ArtistName - @track.AlbumTitle - @track.TrackName</td>
                     <td>
                         <div class="d-flex">
-                            @if (Playlist.Name != "Favorite")
+                            @if (track.IsFavorite)
                             {
-                                @if (track.IsFavorite)
-                                {
-                                    <a href="#" class="m-1" title="Unark as favorite" @onclick="@(() => UnfavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star-fill"></i></a>
-                                }
-                                else
-                                {
-                                    <a href="#" class="m-1" title="Mark as favorite" @onclick="@(() => FavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star"></i></a>
-                                }
-
+                                <a href="#" class="m-1" title="Unmark as favorite" @onclick="@(() => UnfavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star-fill"></i></a>
                             }
-                            <a href="#" class="m-1" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+                            else
+                            {
+                                <a href="#" class="m-1" title="Mark as favorite" @onclick="@(() => FavoriteTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-star"></i></a>
+                            }
+
+                            @if (Playlist.Name != AppConstants.Favorites)
+                            {
+                                <a href="#" class="m-1" title="Remove from this playlist" @onclick="@(() => RemoveTrack(track.TrackId))" @onclick:preventDefault><i class="bi bi-trash"></i></a>
+                            }
                         </div>
                     </td>
                 </tr>
@@ -62,36 +68,40 @@ else
 
 @code {
     [Parameter] public long PlaylistId { get; set; }
-    [Inject] IDbContextFactory<ChinookContext> DbFactory { get; set; }
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
-
     private Chinook.ClientModels.Playlist Playlist;
-    private string CurrentUserId;
     private string InfoMessage;
+    private string ErrorMessage;
+    private string AlertCssClass;
 
     protected override async Task OnInitializedAsync()
     {
-        CurrentUserId = await GetUserId();
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            await LoadPlayListWithTracks();
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
+    }
 
-        await InvokeAsync(StateHasChanged);
-        var DbContext = await DbFactory.CreateDbContextAsync();
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            await LoadPlayListWithTracks();
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
+    }
 
-        Playlist = DbContext.Playlists
-            .Include(a => a.Tracks).ThenInclude(a => a.Album).ThenInclude(a => a.Artist)
-            .Where(p => p.PlaylistId == PlaylistId)
-            .Select(p => new ClientModels.Playlist()
-                {
-                    Name = p.Name,
-                    Tracks = p.Tracks.Select(t => new ClientModels.PlaylistTrack()
-                    {
-                        AlbumTitle = t.Album.Title,
-                        ArtistName = t.Album.Artist.Name,
-                        TrackId = t.TrackId,
-                        TrackName = t.Name,
-                        IsFavorite = t.Playlists.Where(p => p.UserPlaylists.Any(up => up.UserId == CurrentUserId && up.Playlist.Name == "Favorites")).Any()
-                    }).ToList()
-                })
-            .FirstOrDefault();
+    private async Task LoadPlayListWithTracks()
+    {
+        Playlist = await _playlistService.GetPlaylistById(PlaylistId, await GetUserId());
     }
 
     private async Task<string> GetUserId()
@@ -101,27 +111,74 @@ else
         return userId;
     }
 
-    private void FavoriteTrack(long trackId)
+    private async void FavoriteTrack(long trackId)
     {
-        var track = Playlist.Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist Favorites.";
+        try
+        {
+            var track = await _trackService.ToggleFavoriteTrack(trackId, true, await GetUserId());
+            await LoadPlayListWithTracks();
+            DisplayInfoMessage($"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist {AppConstants.Favorites}.");
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
-    private void UnfavoriteTrack(long trackId)
+    private async void UnfavoriteTrack(long trackId)
     {
-        var track = Playlist.Tracks.FirstOrDefault(t => t.TrackId == trackId);
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist Favorites.";
+        try
+        {
+            var track = await _trackService.ToggleFavoriteTrack(trackId, false, await GetUserId());
+            await LoadPlayListWithTracks();
+            StateHasChanged();
+            DisplayInfoMessage($"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {AppConstants.Favorites}.");
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
-    private void RemoveTrack(long trackId)
+    private async void RemoveTrack(long trackId)
     {
-        CloseInfoMessage();
-
+        try
+        {
+            var track = await _trackService.RemoveTrackFromPlaylist(trackId, PlaylistId);
+            await LoadPlayListWithTracks();
+            DisplayInfoMessage($"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {Playlist.Name}.");
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
-    private void CloseInfoMessage()
+    private void DisplayInfoMessage(string message)
+    {
+        CloseAlertMessage();
+
+        if (!string.IsNullOrEmpty(message))
+        {
+            AlertCssClass = "alert alert-info";
+            InfoMessage = message;
+        }
+    }
+
+    private void DisplayErrorMessage(Exception e)
+    {
+        CloseAlertMessage();
+
+        if (e != null && !string.IsNullOrEmpty(e.Message))
+        {
+            AlertCssClass = "alert alert-danger";
+            ErrorMessage = e.Message;
+        }
+    }
+
+    private void CloseAlertMessage()
     {
         InfoMessage = "";
+        ErrorMessage = "";
     }
-
 }
