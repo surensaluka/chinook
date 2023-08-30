@@ -1,8 +1,11 @@
 ﻿@inject IPlaylistService _playlistService;
+@inject IEventService _eventService
 
 @using Chinook.Services;
 @using Chinook.Utility;
 @using System.Security.Claims;
+
+@implements IDisposable
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -28,39 +31,74 @@
                 </NavLink>
             </div>
         }
-        @foreach (var playlist in AllPlaylists)
-        {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="@($"playlist/{playlist.PlaylistId}")">
-                    <i class="bi bi-music-note-list me-3" style="font-size: 1.25em"></i>@playlist.Name
-                </NavLink>
-            </div>
-        }
+
+        @if (AllPlaylists != null)
+            foreach (var playlist in AllPlaylists)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="@($"playlist/{playlist.PlaylistId}")">
+                        <i class="bi bi-music-note-list me-3" style="font-size: 1.25em"></i>@playlist.Name
+                    </NavLink>
+                </div>
+            }
     </nav>
 </div>
+
 
 @code {
     private bool collapseNavMenu = true;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
 
     private string FavoritePlaylistId = string.Empty;
     private List<ClientModels.Playlist> AllPlaylists;
 
     protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
-
-        AllPlaylists = await _playlistService.GetPlaylists();
-        var favoritesPlaylist = AllPlaylists.Find(x => x.Name == AppConstants.Favorites);
-        if (favoritesPlaylist != null)
+        try
         {
-            AllPlaylists.Remove(favoritesPlaylist);
-            FavoritePlaylistId = favoritesPlaylist.PlaylistId.ToString();
+            _eventService.RefreshPlaylistEvent += RefreshPlaylist;
+            await InvokeAsync(StateHasChanged);
+            await LoadPlaylists();
         }
+        catch (Exception)
+        {
+            throw;
+        }
+    }
+
+    private async Task LoadPlaylists()
+    {
+        AllPlaylists = await _playlistService.GetPlaylists(await GetUserId());
+        if (AllPlaylists == null) return;
+
+        var favoritesPlaylist = AllPlaylists.Find(x => x.Name == AppConstants.Favorites);
+        if (favoritesPlaylist == null) return;
+
+        AllPlaylists.Remove(favoritesPlaylist);
+        FavoritePlaylistId = favoritesPlaylist.PlaylistId.ToString();
+    }
+
+    private async Task<string> GetUserId()
+    {
+        var user = (await authenticationState).User;
+        var userId = user.FindFirst(u => u.Type.Contains(ClaimTypes.NameIdentifier))?.Value;
+        return userId;
+    }
+
+    private async void RefreshPlaylist()
+    {
+        await LoadPlaylists();
+        StateHasChanged();
     }
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    public void Dispose()
+    {
+        _eventService.RefreshPlaylistEvent -= RefreshPlaylist;
     }
 }

@@ -7,16 +7,20 @@
 @using Chinook.Utility;
 @using System.Security.Claims;
 
-<h1>Playlist <strong>@Playlist.Name</strong></h1>
-
-@if (!string.IsNullOrWhiteSpace(InfoMessage))
+@if (Playlist != null)
 {
-    <div class="alert alert-info fade show">
+    <h1>Playlist <strong>@Playlist.Name</strong></h1>
+}
+
+@if (!string.IsNullOrWhiteSpace(InfoMessage) || !string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="@AlertCssClass fade show">
         <div class="d-flex align-items-start">
             <div class="flex-grow-1">
                 @InfoMessage
+                @ErrorMessage
             </div>
-            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseInfoMessage"></button>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseAlertMessage"></button>
         </div>
     </div>
 }
@@ -67,16 +71,32 @@ else
     [CascadingParameter] private Task<AuthenticationState> authenticationState { get; set; }
     private Chinook.ClientModels.Playlist Playlist;
     private string InfoMessage;
+    private string ErrorMessage;
+    private string AlertCssClass;
 
     protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
-        await LoadPlayListWithTracks();
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            await LoadPlayListWithTracks();
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        Playlist = await _playlistService.GetPlaylistById(PlaylistId, await GetUserId());
+        try
+        {
+            await LoadPlayListWithTracks();
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
     private async Task LoadPlayListWithTracks()
@@ -93,29 +113,72 @@ else
 
     private async void FavoriteTrack(long trackId)
     {
-        var track = await _trackService.ToggleFavoriteTrack(trackId, true, await GetUserId());
-        await LoadPlayListWithTracks();
-        StateHasChanged();
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist {AppConstants.Favorites}.";
+        try
+        {
+            var track = await _trackService.ToggleFavoriteTrack(trackId, true, await GetUserId());
+            await LoadPlayListWithTracks();
+            DisplayInfoMessage($"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} added to playlist {AppConstants.Favorites}.");
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
     private async void UnfavoriteTrack(long trackId)
     {
-        var track = await _trackService.ToggleFavoriteTrack(trackId, false, await GetUserId());
-        await LoadPlayListWithTracks();
-        StateHasChanged();
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {AppConstants.Favorites}.";
+        try
+        {
+            var track = await _trackService.ToggleFavoriteTrack(trackId, false, await GetUserId());
+            await LoadPlayListWithTracks();
+            StateHasChanged();
+            DisplayInfoMessage($"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {AppConstants.Favorites}.");
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
     private async void RemoveTrack(long trackId)
     {
-        var track = await _trackService.RemoveTrackFromPlaylist(trackId, PlaylistId);
-        await LoadPlayListWithTracks();
-        InfoMessage = $"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {Playlist.Name}.";
+        try
+        {
+            var track = await _trackService.RemoveTrackFromPlaylist(trackId, PlaylistId);
+            await LoadPlayListWithTracks();
+            DisplayInfoMessage($"Track {track.ArtistName} - {track.AlbumTitle} - {track.TrackName} removed from playlist {Playlist.Name}.");
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
-    private void CloseInfoMessage()
+    private void DisplayInfoMessage(string message)
+    {
+        CloseAlertMessage();
+
+        if (!string.IsNullOrEmpty(message))
+        {
+            AlertCssClass = "alert alert-info";
+            InfoMessage = message;
+        }
+    }
+
+    private void DisplayErrorMessage(Exception e)
+    {
+        CloseAlertMessage();
+
+        if (e != null && !string.IsNullOrEmpty(e.Message))
+        {
+            AlertCssClass = "alert alert-danger";
+            ErrorMessage = e.Message;
+        }
+    }
+
+    private void CloseAlertMessage()
     {
         InfoMessage = "";
+        ErrorMessage = "";
     }
 }

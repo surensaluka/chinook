@@ -11,12 +11,15 @@ namespace Chinook.Services
         private readonly IDbContextFactory<ChinookContext> _dbFactory;
         private readonly IMapper _mapper;
         private readonly IPlaylistService _playlistService;
+        private readonly IEventService _eventService;
 
-        public TrackService(IDbContextFactory<ChinookContext> dbFactory, IMapper mapper, IPlaylistService playlistService)
+        public TrackService(IDbContextFactory<ChinookContext> dbFactory, IMapper mapper,
+            IPlaylistService playlistService, IEventService eventService)
         {
             _dbFactory = dbFactory;
             _mapper = mapper;
             _playlistService = playlistService;
+            _eventService = eventService;
         }
 
         public async Task<List<PlaylistTrack>> GetTracksByArtistId(long id, string currentUserId)
@@ -64,6 +67,7 @@ namespace Chinook.Services
             if (favoritePlaylist == null)
             {
                 await _playlistService.CreatePlaylist(AppConstants.Favorites, currentUserId);
+                _eventService.SendRefreshPlaylistEvent();
             }
         }
 
@@ -71,7 +75,7 @@ namespace Chinook.Services
         {
             var dbContext = await _dbFactory.CreateDbContextAsync();
 
-            var playlist = await dbContext.Playlists.Include(p => p.Tracks).FirstAsync(p => p.PlaylistId == playlistId);
+            var playlist = await dbContext.Playlists.Include(p => p.Tracks).FirstOrDefaultAsync(p => p.PlaylistId == playlistId);
             var track = await dbContext.Tracks.FindAsync(trackId);
 
             if (playlist != null && track != null && !playlist.Tracks.Any(t => t.TrackId == track.TrackId))

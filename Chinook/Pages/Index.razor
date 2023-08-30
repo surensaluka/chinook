@@ -13,6 +13,18 @@
     <input type="text" placeholder="Search" @bind="SearchText" />
 </div>
 
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="@AlertCssClass fade show">
+        <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+                @ErrorMessage
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @onclick="CloseAlertMessage"></button>
+        </div>
+    </div>
+}
+
 @if (Artists == null)
 {
     <Loading />
@@ -40,6 +52,8 @@ else
 
 @code {
     private List<Artist> Artists = new();
+    private string ErrorMessage;
+    private string AlertCssClass;
 
     private string searchText = string.Empty;
     public string SearchText
@@ -54,12 +68,42 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
-        Artists = await _artistService.GetArtists();
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+            Artists = await _artistService.GetArtists();
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
     }
 
     private async void SearchArtists(string searchText)
     {
-        Artists = await _artistService.SearchArtists(searchText);
+        try
+        {
+            Artists = await _artistService.SearchArtists(searchText);
+        }
+        catch (Exception e)
+        {
+            DisplayErrorMessage(e);
+        }
+    }
+
+    private void DisplayErrorMessage(Exception e)
+    {
+        CloseAlertMessage();
+
+        if (e != null && !string.IsNullOrEmpty(e.Message))
+        {
+            AlertCssClass = "alert alert-danger";
+            ErrorMessage = e.Message;
+        }
+    }
+
+    private void CloseAlertMessage()
+    {
+        ErrorMessage = "";
     }
 }
